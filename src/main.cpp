@@ -20,7 +20,8 @@ const char *password = "password"; // WiFiのパスワード
 
 // MQTTブローカー
 const char *mqtt_broker = "address";
-const char *topic = "emqx/esp32";
+const char *mqtt_temp = "THMS/temp";
+const char *mqtt_him = "THMS/him";
 const char *mqtt_username = "username";
 const char *mqtt_password = "password";
 const int mqtt_port = 1883;
@@ -123,6 +124,18 @@ void setup()
 
 void loop()
 {
+    while (!client.connected()) {
+    String client_id = "esp32-client-";
+    client_id += String(WiFi.macAddress());
+    if (client.connect(client_id.c_str(), mqtt_username, mqtt_password)) {
+      Serial.println("EMQXのパブリックMQTTブローカーに接続しました");
+    } else {
+      Serial.print("状態で失敗しました ");
+      Serial.print(client.state());
+      delay(2000);
+    }
+  }
+
   sensors_event_t humidity, temp;
 
   uint32_t timestamp = millis();
@@ -139,8 +152,12 @@ void loop()
   Serial.print("Read duration (ms): ");
   Serial.println(timestamp);
 
-  client.publish(topic, String(temp.temperature).c_str());
-  client.subscribe(topic);
+  client.publish(mqtt_temp, String(temp.temperature).c_str());
+  client.publish(mqtt_him, String(humidity.relative_humidity).c_str());
+  client.subscribe(mqtt_temp);
+  client.subscribe(mqtt_him);
 
-  delay(1000);
+  client.disconnect();
+
+  delay(5000);
 }
