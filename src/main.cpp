@@ -20,8 +20,9 @@ const char *password = "password"; // WiFiのパスワード
 
 // MQTTブローカー
 const char *mqtt_broker = "address";
-const char *mqtt_temp = "THMS/temp";
-const char *mqtt_him = "THMS/him";
+const char *mqtt_temp = "mqtt/temp";
+const char *mqtt_hum = "mqtt/hum";
+const char *mqtt_hin = "mqtt/hin";
 const char *mqtt_username = "username";
 const char *mqtt_password = "password";
 const int mqtt_port = 1883;
@@ -153,11 +154,15 @@ void loop()
   Serial.println(timestamp);
 
   client.publish(mqtt_temp, String(temp.temperature).c_str());
-  client.publish(mqtt_him, String(humidity.relative_humidity).c_str());
+  client.publish(mqtt_hum, String(humidity.relative_humidity).c_str());
+  int hin = -8.77+0.148*humidity.relative_humidity+0.907*temp.temperature;  //暑さ指数計算式
+  client.publish(mqtt_hin, String(hin).c_str());    //暑さ指数をMQTTブローカーに送信
+
   client.subscribe(mqtt_temp);
-  client.subscribe(mqtt_him);
+  client.subscribe(mqtt_hum);
+  client.subscribe(mqtt_hin);
 
   client.disconnect();
 
-  delay(5000);
+  delay(3600000); // 1時間ごとにデータを取得
 }
