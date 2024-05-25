@@ -15,7 +15,7 @@
 #include <PubSubClient.h>
 
 // WiFi
-const char *ssid = "ssid";   // WiFi名を入力
+const char *ssid = "ssid";         // WiFi名を入力
 const char *password = "password"; // WiFiのパスワード
 
 // MQTTブローカー
@@ -32,18 +32,30 @@ PubSubClient client(espClient);
 
 Adafruit_SHT4x sht4 = Adafruit_SHT4x();
 
+int mqtt_error = 32; // MQTT接続エラーLEDランプ   赤色
+int wifi_error = 33; // WiFiあ接続エラーLEDランプ   青色
+
 void setup()
 {
   Serial.begin(115200);
+
+  pinMode(mqtt_error, OUTPUT);
+  pinMode(wifi_error, OUTPUT);
 
   // WiFiネットワークへの接続
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED)
   {
-    delay(500);
+    digitalWrite(wifi_error, HIGH);
+    delay(1000);
+    digitalWrite(wifi_error, LOW);
     Serial.println("WiFiへ接続中...");
   }
   Serial.println("WiFiネットワークに接続しました");
+  Serial.printf("ssid : %s\n", ssid);
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.localIP());
+
   // MQTTブローカーへの接続
   client.setServer(mqtt_broker, mqtt_port);
   // client.setCallback(callback);
@@ -60,7 +72,9 @@ void setup()
     {
       Serial.print("状態で失敗しました ");
       Serial.print(client.state());
+      digitalWrite(mqtt_error, HIGH);
       delay(2000);
+      digitalWrite(mqtt_error, LOW);
     }
   }
 
@@ -125,15 +139,21 @@ void setup()
 
 void loop()
 {
-    while (!client.connected()) {
+  while (!client.connected())
+  {
     String client_id = "esp32-client-";
     client_id += String(WiFi.macAddress());
-    if (client.connect(client_id.c_str(), mqtt_username, mqtt_password)) {
+    if (client.connect(client_id.c_str(), mqtt_username, mqtt_password))
+    {
       Serial.println("EMQXのパブリックMQTTブローカーに接続しました");
-    } else {
+    }
+    else
+    {
       Serial.print("状態で失敗しました ");
       Serial.print(client.state());
+      digitalWrite(mqtt_error, HIGH);
       delay(2000);
+      digitalWrite(mqtt_error, LOW);
     }
   }
 
@@ -155,8 +175,9 @@ void loop()
 
   client.publish(mqtt_temp, String(temp.temperature).c_str());
   client.publish(mqtt_hum, String(humidity.relative_humidity).c_str());
-  int hin = -8.77+0.148*humidity.relative_humidity+0.907*temp.temperature;  //暑さ指数計算式
-  client.publish(mqtt_hin, String(hin).c_str());    //暑さ指数をMQTTブローカーに送信
+  int hin = -8.77 + 0.148 * humidity.relative_humidity + 0.907 * temp.temperature; // 暑さ指数計算式
+  client.publish(mqtt_hin, String(hin).c_str());                                   // 暑さ指数をMQTTブローカーに送信
+  Serial.print(hin);
 
   client.subscribe(mqtt_temp);
   client.subscribe(mqtt_hum);
